@@ -1,0 +1,29 @@
+version: '3.9'
+services:
+
+  postgres:
+    image: postgres:14.2
+    hostname: postgres
+    ports:
+      - "54322:5432"
+    environment:
+      - POSTGRES_DB=sale
+      - POSTGRES_PASSWORD=123456
+    volumes:
+      - db-data:/var/lib/postgresql/data
+    restart: always
+
+  pgadmin:
+    image: dpage/pgadmin4:6.7
+    environment:
+      PGADMIN_DEFAULT_EMAIL: "admin@admin.com"
+      PGADMIN_DEFAULT_PASSWORD: "admin@admin"
+    ports:
+      - "4444:80"
+    volumes:
+      - pgadmin:/var/lib/pgadmin
+    restart: always
+
+volumes:
+  db-data:
+  pgadmin:
