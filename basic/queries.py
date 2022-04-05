@@ -1,5 +1,5 @@
 from django.db.models import Value, ExpressionWrapper, F, IntegerField, FloatField, Q, DateField, DurationField, Case, \
-    When, CharField, Sum, Max, Min, Avg, Count
+    When, CharField, Sum, Max, Min, Avg, Count, OuterRef, Subquery, Exists
 from django.db.models.functions import Now, Cast, ExtractDay, LPad, Upper, Lower
 
 from basic import models
@@ -163,7 +163,6 @@ def exercicio15():
 # Criar uma consulta para trazer o último nome dos clientes.
 # Criar uma consulta para rocar quem tenha silva no nome para Oliveira.
 # Criar uma consulta para trazer o total de funcionários por estado civil;
-# Criar uma consulta para trazer o total vendido em valor R$ por filial;
 # Criar uma consulta para trazer o total vendido em valor R$ por zona;
 # Criar uma consulta para trazer o total vendido em valor R$ por estado;
 # Criar uma consulta para trazer o total vendido em quantidade por cidade, trazer apenas as cidades que tiveram vendas acima de quantidade 100;
@@ -223,6 +222,80 @@ def exercicio21(commission=True):
         'product__product_group__commission_percentage',
         'commission_or_gain'
     )
+
+
+def exercicio25():
+    # Criar uma consulta para trazer o total vendido em valor R$ por zona
+    return models.SaleItem.objects.select_related('sale__branch__district__zone').values(
+        'sale__branch__district__zone__name'
+    ).annotate(
+        total=Sum(ExpressionWrapper(
+            F('quantity') * F('product__sale_price'), output_field=FloatField()
+        ))
+    ).values('sale__branch__district__zone__name', 'total')
+
+
+def exercicio26():
+    # Criar uma consulta para trazer o total vendido em valor R$ por filial;
+    return models.SaleItem.objects.select_related('sale__branch').values(
+        'sale__branch__district__zone__name'
+    ).annotate(
+        total=Sum(ExpressionWrapper(
+            F('quantity') * F('product__sale_price'), output_field=FloatField()
+        ))
+    ).values('sale__branch__name', 'total')
+
+
+def exercicio27():
+    # Criar uma consulta para trazer o total de funcionários por estado civil;
+    return models.Employee.objects.values('marital_status__name').annotate(
+        total=Count(F('id'))
+    ).values(
+        'marital_status__name', 'total'
+    )
+
+
+def exercicio28():
+    # Criar uma consulta para trazer o total vendido em valor R$ por estado;
+    return models.SaleItem.objects.values('sale__branch__district__city__state__name').annotate(
+        total=ExpressionWrapper(F('quantity') * F('product__sale_price'), output_field=FloatField())
+    ).values(
+        'sale__branch__district__city__state__name', 'total'
+    )
+
+
+def exercicio29():
+    # Uma consulta para trazer o total vendido em valor por ano;
+    return models.SaleItem.objects.values(
+        'sale__date__year'
+    ).annotate(
+        total=Sum(ExpressionWrapper(F('quantity') * F('product__sale_price'), output_field=FloatField()))
+    ).values(
+        'sale__date__year', 'total'
+    )
+
+
+def exercicio30():
+    # subquery
+    sbq = models.SaleItem.objects.select_related('sale').filter(
+        product=OuterRef('id')
+    ).values('sale__date').order_by('-sale__date')[:1]
+    return models.Product.objects.annotate(last_sale=Subquery(sbq)).values('id', 'name', 'last_sale')
+
+
+def exercicio31():
+    sbq = models.SaleItem.objects.filter(product=OuterRef('id'), sale__date__year=2021)[:1]
+    return models.Product.objects.annotate(
+        exists=Exists(sbq)
+    ).values('id', 'name', 'exists')
+
+
+def exercicio32():
+    # flat True retorna apenas os valores sem chave
+    # distinct remove os duplicados
+    sbq = models.SaleItem.objects.filter(sale__date__year=2021).values_list('product', flat=True).distinct()
+    # usando o IN no id e passando a subquery
+    return models.Product.objects.filter(id__in=sbq).values('id', 'name')
 
 
 def max():
