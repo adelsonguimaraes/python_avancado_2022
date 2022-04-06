@@ -9,6 +9,10 @@ from basic import models
 #     city = serializers.CharField(read_only=True, source='district__city__name')
 #     state = serializers.CharField(read_only=True, source='district__city__state__name')
 
+class EmployeeSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = models.Employee
+        fields = '__all__'
 
 class ZoneSerializer(serializers.ModelSerializer):
     class Meta:
@@ -83,3 +87,11 @@ class ProductGroupSerializer(serializers.ModelSerializer):
     class Meta:
         model = models.ProductGroup
         fields = '__all__'
+
+
+class SaleSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = models.Sale
+        fields = '__all__'
+
+

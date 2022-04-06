@@ -1,4 +1,6 @@
+from decimal import Decimal
 from django.db import models
+from basic import managers
 
 
 # Create your models here.
@@ -168,6 +170,7 @@ class Sale(ModelBase):
         null=False
     )
     date = models.DateTimeField(null=False)
+    objects = managers.SaleManager()
 
     class Meta:
         db_table = 'sale'
@@ -262,3 +265,6 @@ class Employee(ModelBase):
 
     def __str__(self):
         return self.name
+
+    def adjustment_salary(self, percent):
+        self.salary += self.salary * (Decimal(percent)/100)
