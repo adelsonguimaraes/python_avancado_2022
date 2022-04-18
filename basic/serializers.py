@@ -1,4 +1,5 @@
 from rest_framework import serializers
+from rest_flex_fields import FlexFieldsModelSerializer
 
 from basic import models
 
@@ -77,10 +78,21 @@ class StateSerializer(serializers.ModelSerializer):
         fields = '__all__'
 
 
-class SupplierSerializer(serializers.ModelSerializer):
+class SupplierSerializer(FlexFieldsModelSerializer):
     class Meta:
         model = models.Supplier
         fields = '__all__'
+
+    # campo para uso do flex fields
+    expandable_fields = {
+        'products': (  # o nome da lista
+            'basic.ProductSerializer',  # o serializador da tabela associada
+            {
+                'source': 'product_set',  # o campo set
+                'many': True  # relacionamento muitos pra muitos
+            }
+        )
+    }
 
 
 class ProductGroupSerializer(serializers.ModelSerializer):
@@ -95,3 +107,16 @@ class SaleSerializer(serializers.ModelSerializer):
         fields = '__all__'
 
 
+class ProductSerializer(FlexFieldsModelSerializer):
+    class Meta:
+        model = models.Product
+        fields = '__all__'
+
+    expandable_fields = {
+        'product_group': (  # nome do grupo
+            'basic.ProductGroupSerializer',  # serializador da tabela associativa
+        ),
+        'supplier': (  # nome do grupo
+            'basic.SupplierSerializer',  # serializador da tabela associativa
+        )
+    }

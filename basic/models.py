@@ -191,6 +191,7 @@ class SaleItem(ModelBase):
         null=False
     )
     quantity = models.DecimalField(max_digits=16, decimal_places=3, null=False)
+    sale_price = models.DecimalField(max_digits=16, decimal_places=2, null=False, default=0)
 
     class Meta:
         db_table = 'sale_item'

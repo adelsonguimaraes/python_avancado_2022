@@ -13,6 +13,8 @@ https://docs.djangoproject.com/en/4.0/ref/settings/
 from pathlib import Path
 
 # Build paths inside the project like this: BASE_DIR / 'subdir'.
+from corsheaders.defaults import default_methods
+
 BASE_DIR = Path(__file__).resolve().parent.parent
 
 
@@ -40,7 +42,11 @@ INSTALLED_APPS = [
     'basic.apps.BasicConfig',
     'rest_framework',
     'django_filters',
+    'channels',
 ]
+
+CORS_ORIGIN_ALLOW_ALL = True
+CORS_ALLOW_METHODS = default_methods
 
 MIDDLEWARE = [
     'django.middleware.security.SecurityMiddleware',
@@ -50,6 +56,7 @@ MIDDLEWARE = [
     'django.contrib.auth.middleware.AuthenticationMiddleware',
     'django.contrib.messages.middleware.MessageMiddleware',
     'django.middleware.clickjacking.XFrameOptionsMiddleware',
+    'corsheaders.middleware.CorsMiddleware',
 ]
 
 ROOT_URLCONF = 'sale.urls'
@@ -71,6 +78,7 @@ TEMPLATES = [
 ]
 
 WSGI_APPLICATION = 'sale.wsgi.application'
+ASGI_APPLICATION = 'sale.asgi.application'
 
 
 # Database
@@ -151,15 +159,38 @@ LOGGING = {
             'level': 'DEBUG',
             'handlers': ['console'],
         },
-        'django': {
-            'level': 'DEBUG',
-            'handlers': ['console'],
-            # 'propagate': False,
-        },
-        'django.request': {
-            'level': 'DEBUG',
-            'handlers': ['console'],
-            # 'propagate': False,
-        },
+        # 'django': {
+        #     'level': 'DEBUG',
+        #     'handlers': ['console'],
+        #     # 'propagate': False,
+        # },
+        # 'django.request': {
+        #     'level': 'DEBUG',
+        #     'handlers': ['console'],
+        #     # 'propagate': False,
+        # },
+    }
+}
+
+# url do broker, no final o barra zero é o caminho para o banco de dados
+# padrão do redis que guarda a mensageria recebida
+CELERY_BROKER_URL = 'redis://127.0.0.1:6379/0'
+# configurando para aceitar conteúdos no formato JSOn
+CELERY_ACCEPT_CONTENT = ['application/json']
+# habilitando UTC
+CELERY_ENABLE_UTC = True
+# setando a timezone
+CELERY_TIMEZONE = 'America/Manaus'
+# configurando serializer da task
+CELERY_TASK_SERIALIZER = 'json'
+# configurando serializer do result
+CELERY_RESULT_SERIALIZER = 'json'
+
+CHANNEL_LAYERS = {
+    'default': {
+        'BACKEND': 'channels_redis.core.RedisChannelLayer',
+        'CONFIG': {
+            'hosts': [('127.0.0.1', 6379,)]
+        }
     }
 }

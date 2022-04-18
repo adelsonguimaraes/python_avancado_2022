@@ -1,11 +1,10 @@
-from django.db.models import Sum, ExpressionWrapper, F, FloatField
-from django.db.models.functions import ExtractYear, ExtractMonth
+from kombu.exceptions import OperationalError
 from rest_framework import viewsets
 from rest_framework.decorators import action
 from rest_framework.response import Response
 
 
-from basic import models, serializers, queries, helpers, serializers_results, serializers_params, filters
+from basic import models, serializers, queries, helpers, serializers_results, serializers_params, filters, tasks
 
 
 # class EmployeeViewSet(viewsets.ModelViewSet):
@@ -21,6 +20,7 @@ from basic import models, serializers, queries, helpers, serializers_results, se
 class EmployeeViewSet(viewsets.ModelViewSet):
     queryset = models.Employee.objects.all()
     serializer_class = serializers.EmployeeSerializer
+    fiter_class = filters.EmployeeFilter
 
     @action(methods=['PATCH'], detail=True)
     def up_percentual(self, request, *args, **kwargs):
@@ -80,13 +80,19 @@ class DepartmentViewSet(viewsets.ModelViewSet):
 
 
 class StateViewSet(viewsets.ModelViewSet):
-    queryset = models.MaritalStatus.objects.all()
+    queryset = models.State.objects.all()
     serializer_class = serializers.StateSerializer
 
 
 class SupplierViewSet(viewsets.ModelViewSet):
-    queryset = models.MaritalStatus.objects.all()
+    queryset = models.Supplier.objects.all()
     serializer_class = serializers.SupplierSerializer
+
+    # sobre escrevendo o list informando a relação inversa prefetch related (um para muitos)
+    # pra evitar multiplas consultas
+    def list(self, request, *args, **kwargs):
+        self.queryset = self.queryset.prefetch_related('product_set')
+        return super(SupplierViewSet, self).list(request, *args, **kwargs)
 
 
 class ProductGroupViewSet(viewsets.ModelViewSet):
@@ -100,7 +106,12 @@ class SaleModelViewSet(viewsets.ModelViewSet):
 
     @action(methods=['GET'], detail=False)
     def total_by_year(self, request, *args, **kwargs):
-        queryset = models.Sale.objects.by_year()
+        try:
+            tasks.sale_by_year.apply_async()
+        except OperationalError as error:
+            raise Exception(f'Broker connection error {error}')
+        return Response(status=200)
+
         # result = serializers_results.SaleTotalByYearSerializer(
         #     instance=queryset,
         #     many=True,
@@ -120,4 +131,35 @@ class SaleModelViewSet(viewsets.ModelViewSet):
         #     """
         # )
 
-        return Response(data=queryset, status=200)
+
+class ProductModelViewSet(viewsets.ModelViewSet):
+    # colocando o select related para todas as consultas
+    queryset = models.Product.objects.all()
+    serializer_class = serializers.ProductSerializer
+    filter_class = filters.ProductFilter
+
+    def list(self, request, *args, **kwargs):
+
+        expand = request.query_params.get('expand', None)
+        if expand is not None:
+            relations = expand.split(',')
+            for r in relations:
+                self.queryset = self.queryset.select_related(r)
+        return super(ProductModelViewSet, self).list(request, *args, **kwargs)
+
+
+    # sobre-escrevendo o metodo list e passando o select_related para que django
+    # faça a consulta correta com inner join, ao invés de fazer uma nova consulta para
+    # cada item da lista
+    # def list(self, request, *args, **kwargs):
+    #     self.queryset = self.queryset.select_related('supplier')
+    #     self.serializer_class = serializers.ProductListSerializer
+    #     return super(ProductModelViewSet, self).list(request, *args, **kwargs)
+    
+    # fazendo a mesma coisa sobre escrevendo o retrieve (get by id)
+    # def retrieve(self, request, *args, **kwargs):
+    #     self.queryset = self.queryset.select_related('supplier')
+    #     return super(ProductModelViewSet, self).retrieve(request, *args, **kwargs)
+    
+
+
